@@ -2,9 +2,14 @@ import dns from 'dns';
 import net from 'net';
 import tls from 'tls';
 import { spawn } from 'child_process';
+import { body, validationResult } from 'express-validator';
+import { AppError, formatValidationErrors } from '../errors.js';
 
 const dnsPromises = dns.promises;
 const isWindows = process.platform === 'win32';
+
+// Configura servidores DNS confiáveis (Google e Cloudflare) para evitar ECONNREFUSED em ambientes Windows
+dnsPromises.setServers(['8.8.8.8', '1.1.1.1']);
 
 function sanitizeTarget(value) {
   if (!value || typeof value !== 'string') return null;
@@ -25,7 +30,19 @@ function runCommand(command, args = [], timeout = 20000) {
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
     });
-    child.on('error', reject);
+    child.on('error', (error) => {
+      if (error && (error.code === 'ENOENT' || error.code === 'ENOTSUP')) {
+        resolve({
+          command: `${command} ${args.join(' ')}`.trim(),
+          exitCode: 127,
+          stdout: `Comando '${command}' não disponível neste ambiente. Exibindo resultado simulado.`,
+          stderr: '',
+          details: { simulated: true, reason: error.message },
+        });
+        return;
+      }
+      reject(error);
+    });
     child.on('close', (code) => {
       resolve({ command: `${command} ${args.join(' ')}`.trim(), exitCode: code, stdout: stdout.trim(), stderr: stderr.trim() });
     });
@@ -260,15 +277,29 @@ async function lookupGeolocation(target) {
   return await response.json();
 }
 
+export const runToolValidation = [
+  body('ferramenta').isString().notEmpty().withMessage('A ferramenta é obrigatória.'),
+  body('alvo').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1 }).withMessage('O alvo deve ser uma string válida.'),
+];
+
 export async function runTool(req, res, next) {
-  const { ferramenta, alvo } = req.body;
-  if (!ferramenta) {
-    return res.status(400).json({ message: 'A ferramenta é obrigatória.' });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(new AppError('Erro de validação.', 400, formatValidationErrors(errors.array())));
   }
 
+  const { ferramenta, alvo } = req.body;
   const target = ferramenta === 'meu-ip' ? null : sanitizeTarget(alvo);
   if (ferramenta !== 'meu-ip' && !target) {
-    return res.status(400).json({ message: 'Alvo inválido. Informe um IP ou domínio válido.' });
+    return next(
+      new AppError('Alvo inválido. Informe um IP ou domínio válido.', 400, [
+        { field: 'alvo', message: 'Informe um IP ou domínio válido.' },
+      ])
+    );
+  }
+
+  if (target && (target === '127.0.0.1' || target.toLowerCase() === 'localhost' || target === '::1' || target.startsWith('10.') || target.startsWith('192.168.'))) {
+     return next(new AppError('Alvo restrito por segurança.', 403));
   }
 
   try {
@@ -290,8 +321,10 @@ export async function runTool(req, res, next) {
         break;
       }
       case 'traceroute': {
-        const args = isWindows ? ['-d', target] : ['-m', '30', target];
-        result = { ...result, ...(await runCommand(isWindows ? 'tracert' : 'traceroute', args)) };
+        // Reduz o número máximo de saltos para 20 e o tempo de espera por resposta
+        const args = isWindows ? ['-d', '-h', '20', '-w', '1000', target] : ['-m', '20', '-w', '1', target];
+        // Timeout global de 45 segundos para dar tempo ao traceroute terminar
+        result = { ...result, ...(await runCommand(isWindows ? 'tracert' : 'traceroute', args, 45000)) };
         break;
       }
       case 'nslookup': {

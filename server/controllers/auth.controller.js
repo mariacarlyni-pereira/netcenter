@@ -1,23 +1,37 @@
 import bcrypt from 'bcryptjs';
+import { body, validationResult } from 'express-validator';
 import { createUser, getUserByEmail } from '../models/users.model.js';
 import { createJwtToken } from '../utils/jwt.util.js';
+import { AppError, formatValidationErrors } from '../errors.js';
+
+export const loginValidation = [
+  body('email').isEmail().withMessage('Informe um e-mail válido.'),
+  body('password').isString().isLength({ min: 6 }).withMessage('A senha deve ter pelo menos 6 caracteres.'),
+];
+
+export const registerValidation = [
+  body('name').trim().isLength({ min: 2 }).withMessage('O nome deve ter pelo menos 2 caracteres.'),
+  body('email').isEmail().withMessage('Informe um e-mail válido.'),
+  body('password').isString().isLength({ min: 6 }).withMessage('A senha deve ter pelo menos 6 caracteres.'),
+];
 
 export async function login(req, res, next) {
   const { email, password } = req.body;
+  const errors = validationResult(req);
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email e senha são obrigatórios.' });
+  if (!errors.isEmpty()) {
+    return next(new AppError('Erro de validação.', 400, formatValidationErrors(errors.array())));
   }
 
   try {
     const user = await getUserByEmail(email);
     if (!user) {
-      return res.status(401).json({ message: 'Credenciais inválidas.' });
+      return next(new AppError('Credenciais inválidas.', 401));
     }
 
     const senhaCorreta = await bcrypt.compare(password, user.password);
     if (!senhaCorreta) {
-      return res.status(401).json({ message: 'Credenciais inválidas.' });
+      return next(new AppError('Credenciais inválidas.', 401));
     }
 
     const token = createJwtToken(user);
@@ -36,15 +50,16 @@ export async function login(req, res, next) {
 
 export async function register(req, res, next) {
   const { name, email, password } = req.body;
+  const errors = validationResult(req);
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Nome, email e senha são obrigatórios.' });
+  if (!errors.isEmpty()) {
+    return next(new AppError('Erro de validação.', 400, formatValidationErrors(errors.array())));
   }
 
   try {
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
-      return res.status(409).json({ message: 'Email já cadastrado.' });
+      return next(new AppError('Email já cadastrado.', 409));
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);

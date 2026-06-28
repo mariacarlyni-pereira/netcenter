@@ -1,6 +1,14 @@
+import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'netcenter_secret_key';
+dotenv.config();
+
+const fallbackSecret = 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || fallbackSecret;
+
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET não definido. Configure a variável de ambiente antes de iniciar o servidor.');
+}
 
 export function createJwtToken(user) {
   return jwt.sign(

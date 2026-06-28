@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: NetCenter API
+  version: 1.0.0
+  description: API para autenticação, execução de ferramentas de rede, consulta de perfil e geração de relatórios.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/auth/register:
+    post:
+      summary: Cadastrar um novo usuário
+      tags: [Autenticação]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Dados inválidos
+        '409':
+          description: E-mail já cadastrado
+
+  /api/auth/login:
+    post:
+      summary: Autenticar usuário
+      tags: [Autenticação]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Credenciais inválidas
+
+  /api/auth/profile:
+    get:
+      summary: Consultar o perfil do usuário autenticado
+      tags: [Perfil]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil retornado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '401':
+          description: Token ausente ou inválido
+
+  /api/ferramentas:
+    get:
+      summary: Listar ferramentas disponíveis
+      tags: [Ferramentas]
+      responses:
+        '200':
+          description: Lista de ferramentas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ferramenta'
+
+  /api/run-tool:
+    post:
+      summary: Executar uma ferramenta de rede
+      tags: [Ferramentas]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunToolRequest'
+      responses:
+        '200':
+          description: Execução realizada com sucesso
+        '400':
+          description: Dados inválidos ou alvo inválido
+
+  /api/reports:
+    get:
+      summary: Listar relatórios do usuário autenticado
+      tags: [Relatórios]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Relatórios retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+
+  /api/reports/generate:
+    post:
+      summary: Gerar um relatório em PDF para o usuário autenticado
+      tags: [Relatórios]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportRequest'
+      responses:
+        '201':
+          description: Relatório gerado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateReportResponse'
+        '400':
+          description: Dados inválidos
+        '401':
+          description: Token ausente ou inválido
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          example: João Silva
+        email:
+          type: string
+          format: email
+          example: joao@email.com
+        password:
+          type: string
+          minLength: 6
+          example: senha12345
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: joao@email.com
+        password:
+          type: string
+          minLength: 6
+          example: senha12345
+
+    RunToolRequest:
+      type: object
+      required: [ferramenta]
+      properties:
+        ferramenta:
+          type: string
+          enum: [meu-ip, ping, traceroute, nslookup, dns-lookup, ip-geolocation, port-scanner, ssl-checker, whois, http-header-checker]
+          example: ping
+        alvo:
+          type: string
+          minLength: 1
+          example: 8.8.8.8
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+
+    ProfileResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+
+    Ferramenta:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        descricao:
+          type: string
+
+    GenerateReportRequest:
+      type: object
+      required: [ferramenta, alvo]
+      properties:
+        ferramenta:
+          type: string
+          example: ping
+        alvo:
+          type: string
+          example: 8.8.8.8
+
+    GenerateReportResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        pdf_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        ferramenta:
+          type: string
+        alvo:
+          type: string
+        pdf_path:
+          type: string
+        created_at:
+          type: string
+          format: date-time

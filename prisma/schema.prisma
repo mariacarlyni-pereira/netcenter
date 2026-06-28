@@ -23,14 +23,14 @@ model User {
 }
 
 model Report {
-  id         String @id @default(uuid())
+  id         String   @id @default(uuid())
   user_id    String
   title      String
   ferramenta String
   alvo       String
   content    String
   pdf_path   String
-  created_at String
+  created_at DateTime
 
   user User @relation(fields: [user_id], references: [id])
 }

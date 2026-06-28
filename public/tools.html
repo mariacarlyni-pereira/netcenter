@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado da Análise | NetCenter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-2 text-blue-500 hover:opacity-80 transition">
+                <i data-lucide="globe-2" class="w-8 h-8"></i>
+                <span class="text-2xl font-bold text-white tracking-tight">Net<span class="text-blue-500">Center</span></span>
+            </a>
+            <nav class="hidden md:flex gap-6 text-sm font-medium text-slate-400">
+                <a href="index.html" class="hover:text-blue-400 transition">Nova Consulta</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+        
+<div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="p-2 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition border border-slate-800">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white flex flex-wrap gap-3">
+                            <span class="text-slate-400">Ferramenta:</span>
+                            <span id="titulo-ferramenta" class="text-blue-400 font-mono tracking-tight">carregando...</span>
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Execução em tempo real
+                        </p>
+                        <p class="text-xs text-slate-400 mt-2">
+                            Você pode testar todas as ferramentas sem login. Apenas a geração de relatório fica disponível para usuários autenticados.
+                        </p>
+                        <div class="mt-4 grid gap-3 sm:grid-cols-[1.4fr_auto] items-center">
+                            <div class="flex flex-col gap-2">
+                                <label class="text-slate-400 text-sm font-medium">Endereço / Domínio</label>
+                                <input id="input-alvo-tool" type="text" placeholder="ex: google.com ou 8.8.8.8" class="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-slate-100 outline-none focus:border-blue-500 transition" />
+                            </div>
+                            <button id="btn-run-tool" class="self-end bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl transition">Executar teste</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 items-center">
+                    <button id="btn-generate-report" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-2xl transition">Gerar relatório em PDF</button>
+                    <a id="report-link" href="#" target="_blank" class="hidden bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-5 rounded-2xl transition">Abrir PDF</a>
+                </div>
+                <p id="report-status" class="text-sm text-slate-400"></p>
+            </div>
+
+        <div class="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+                <div class="p-6">
+                    <div class="bg-[#09121A] rounded-2xl p-6 font-mono text-sm text-emerald-400 min-h-[420px] overflow-y-auto border border-slate-800 shadow-inner" id="terminal-output">
+                        <p class="text-slate-500 mb-4"># NetCenter CLI v1.0.0</p>
+                        <p class="text-slate-500 mb-6">> Executando: <span id="texto-comando" class="text-blue-400">aguardando...</span></p>
+                        <div id="output-lines">
+                            <p>Use o botão <strong>Executar teste</strong> para iniciar a ferramenta.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-5">
+                <div>
+                    <h2 class="text-white text-lg font-semibold mb-3">Resumo do alvo</h2>
+                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-4 space-y-2 text-sm text-slate-300">
+                        <p><span class="text-slate-500">Alvo:</span> <span id="summary-alvo">carregando...</span></p>
+                        <p><span class="text-slate-500">Ferramenta:</span> <span id="summary-ferramenta">carregando...</span></p>
+                        <p><span class="text-slate-500">Última execução:</span> <span id="summary-status">pendente</span></p>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-white text-lg font-semibold mb-3">Detalhes da ferramenta</h2>
+                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-4 text-sm text-slate-300">
+                        <p id="tool-description">Aguarde enquanto a descrição da ferramenta é carregada.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script type="module">
+        import { obterToken, gerarRelatorio, executarFerramenta } from './api/auth.js';
+
+        const token = obterToken();
+
+        const params = new URLSearchParams(window.location.search);
+        const alvo = params.get('alvo') || 'meu-ip';
+        const ferramenta = params.get('ferramenta') || 'ping';
+
+        const tituloFerramenta = document.getElementById('titulo-ferramenta');
+        const textoComando = document.getElementById('texto-comando');
+        const outputLines = document.getElementById('output-lines');
+        const summaryAlvo = document.getElementById('summary-alvo');
+        const summaryFerramenta = document.getElementById('summary-ferramenta');
+        const summaryStatus = document.getElementById('summary-status');
+        const toolDescription = document.getElementById('tool-description');
+        const btnRunTool = document.getElementById('btn-run-tool');
+        const btnGenerateReport = document.getElementById('btn-generate-report');
+        const reportLink = document.getElementById('report-link');
+        const reportStatus = document.getElementById('report-status');
+
+        const ferramentaLabels = {
+            'meu-ip': 'Meu IP',
+            'ping': 'Teste de Ping',
+            'traceroute': 'Traceroute',
+            'nslookup': 'Validação de DNS de domínio',
+            'dns-lookup': 'DNS Lookup',
+            'ip-geolocation': 'IP Geolocation',
+            'port-scanner': 'Port Scanner',
+            'ssl-checker': 'SSL Checker',
+            'whois': 'WHOIS',
+            'http-header-checker': 'HTTP Header Checker',
+            'ip-reputation-checker': 'IP Reputation Checker',
+            'ip-blacklist-checker': 'IP Blacklist Checker',
+        };
+
+        const descriptions = {
+            'meu-ip': 'Identifica o IP público do servidor que executa o NetCenter.',
+            'ping': 'Verifica latência e conectividade com o destino.',
+            'traceroute': 'Rastreia o caminho de rede entre o servidor e o destino.',
+            'nslookup': 'Valida os principais registros DNS do domínio e identifica possíveis inconsistências.',
+            'dns-lookup': 'Obtém registros DNS para o domínio informado.',
+            'ip-geolocation': 'Busca informações de localização geográfica do IP.',
+            'port-scanner': 'Verifica portas TCP comuns no destino.',
+            'ssl-checker': 'Testa o certificado TLS/SSL do destino.',
+            'whois': 'Consulta dados de registro de domínio ou IP.',
+            'http-header-checker': 'Obtém cabeçalhos HTTP/HTTPS do destino.',
+            'ip-reputation-checker': 'Avalia reputação e listas negras do IP.',
+            'ip-blacklist-checker': 'Verifica se o IP está em listas de bloqueio.',
+        };
+
+        const placeholders = {
+            'meu-ip': 'Sem alvo necessário',
+            'ping': 'ex: google.com ou 8.8.8.8',
+            'traceroute': 'ex: cloudflare.com ou 1.1.1.1',
+            'nslookup': 'ex: exemplo.com',
+            'dns-lookup': 'ex: exemplo.com',
+            'ip-geolocation': 'ex: 8.8.8.8',
+            'port-scanner': 'ex: servidor.com ou 1.1.1.1',
+            'ssl-checker': 'ex: seu-dominio.com',
+            'whois': 'ex: exemplo.com',
+            'http-header-checker': 'ex: exemplo.com',
+            'ip-reputation-checker': 'ex: 8.8.8.8',
+            'ip-blacklist-checker': 'ex: 8.8.8.8',
+        };
+
+        const toolName = ferramentaLabels[ferramenta] || ferramenta;
+        tituloFerramenta.textContent = toolName;
+        summaryAlvo.textContent = alvo;
+        summaryFerramenta.textContent = toolName;
+        toolDescription.textContent = descriptions[ferramenta] || 'Ferramenta selecionada.';
+        textoComando.textContent = ferramenta === 'meu-ip' ? 'meu-ip' : `${ferramenta} ${alvo}`;
+
+        const inputAlvoTool = document.getElementById('input-alvo-tool');
+        inputAlvoTool.placeholder = placeholders[ferramenta] || 'Digite um domínio ou IP';
+        inputAlvoTool.value = ferramenta === 'meu-ip' ? '' : alvo;
+        inputAlvoTool.disabled = ferramenta === 'meu-ip';
+
+        let targetValue = ferramenta === 'meu-ip' ? 'meu-ip' : (alvo !== 'meu-ip' ? alvo : '');
+
+        const setCurrentTarget = (value) => {
+            targetValue = value;
+            summaryAlvo.textContent = value || (ferramenta === 'meu-ip' ? 'Sem alvo necessário' : 'Nenhum alvo definido');
+            textoComando.textContent = ferramenta === 'meu-ip' ? 'meu-ip' : `${ferramenta} ${value}`;
+        };
+
+        if (targetValue) {
+            setCurrentTarget(targetValue);
+        }
+
+        inputAlvoTool.addEventListener('input', () => {
+            if (ferramenta !== 'meu-ip') {
+                setCurrentTarget(inputAlvoTool.value.trim());
+            }
+        });
+
+        inputAlvoTool.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                runTool();
+            }
+        });
+
+        function appendOutput(lines) {
+            outputLines.innerHTML = '';
+            lines.forEach((line) => {
+                const p = document.createElement('p');
+                p.textContent = line;
+                outputLines.appendChild(p);
+            });
+        }
+
+        async function runTool() {
+            if (ferramenta !== 'meu-ip') {
+                const novoAlvo = inputAlvoTool.value.trim();
+                if (!novoAlvo) {
+                    alert('Digite um endereço ou domínio para executar a ferramenta.');
+                    return;
+                }
+                setCurrentTarget(novoAlvo);
+            }
+
+            btnRunTool.disabled = true;
+            reportStatus.textContent = '';
+            summaryStatus.textContent = 'executando';
+            appendOutput(['Iniciando execução...', `Ferramenta: ${toolName}`, `Alvo: ${targetValue}`]);
+
+            try {
+                const result = await executarFerramenta(ferramenta, targetValue);
+                const lines = [];
+
+                if (result.command) {
+                    lines.push(`Comando: ${result.command}`);
+                }
+                if (result.exitCode !== undefined) {
+                    lines.push(`Código de saída: ${result.exitCode}`);
+                }
+                if (result.stdout) {
+                    lines.push('--- Saída ---');
+                    lines.push(...result.stdout.split('\n'));
+                }
+                if (result.stderr) {
+                    lines.push('--- Erro ---');
+                    lines.push(...result.stderr.split('\n'));
+                }
+                if (result.details) {
+                    lines.push('--- Detalhes ---');
+                    lines.push(JSON.stringify(result.details, null, 2));
+                }
+
+                appendOutput(lines.length ? lines : ['Nenhum resultado retornado.']);
+                summaryStatus.textContent = 'concluído';
+                reportStatus.textContent = 'Execução concluída com sucesso.';
+            } catch (error) {
+                const msg = error.message || 'Falha ao executar a ferramenta.';
+                appendOutput([`Erro: ${msg}`]);
+                summaryStatus.textContent = 'erro';
+                reportStatus.textContent = msg;
+            } finally {
+                btnRunTool.disabled = false;
+            }
+        }
+
+        btnRunTool.addEventListener('click', runTool);
+
+        btnGenerateReport.addEventListener('click', async () => {
+            if (!token) {
+                reportStatus.textContent = 'Faça login para gerar relatórios.';
+                return;
+            }
+
+            if (ferramenta !== 'meu-ip' && !inputAlvoTool.value.trim()) {
+                alert('Digite um endereço ou domínio antes de gerar o relatório.');
+                return;
+            }
+            reportStatus.textContent = 'Gerando relatório...';
+            btnGenerateReport.disabled = true;
+            reportLink.classList.add('hidden');
+            try {
+                const targetForReport = ferramenta === 'meu-ip' ? 'meu-ip' : (inputAlvoTool.value.trim() || targetValue);
+                setCurrentTarget(targetForReport);
+                const result = await gerarRelatorio(ferramenta, targetForReport);
+                reportStatus.textContent = 'Relatório gerado com sucesso.';
+                reportLink.href = result.pdf_url;
+                reportLink.textContent = 'Abrir PDF';
+                reportLink.classList.remove('hidden');
+            } catch (error) {
+                reportStatus.textContent = error.message;
+            } finally {
+                btnGenerateReport.disabled = false;
+            }
+        });
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>

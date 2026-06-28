@@ -41,6 +41,7 @@ export async function generateReport(req, res, next) {
   try {
     const ferramentas = await getAllFerramentas();
     const { content, createdAt } = buildReportContent(req.user, ferramenta, alvo, ferramentas);
+    const createdAtDate = new Date();
     const reportId = crypto.randomUUID();
     const pdfPath = path.join(REPORTS_DIR, `${reportId}.pdf`);
 
@@ -65,10 +66,10 @@ export async function generateReport(req, res, next) {
       alvo,
       content,
       pdf_path: `/reports/${reportId}.pdf`,
-      created_at: createdAt,
+      created_at: createdAtDate,
     });
 
-    res.status(201).json({ id: reportId, title: `Relatório completo de ${alvo}`, pdf_url: `/reports/${reportId}.pdf`, created_at: createdAt });
+    res.status(201).json({ id: reportId, title: `Relatório completo de ${alvo}`, pdf_url: `/reports/${reportId}.pdf`, created_at: createdAtDate.toISOString() });
   } catch (error) {
     console.error('Erro ao gerar relatório:', error);
     next(error);

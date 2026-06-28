@@ -82,6 +82,20 @@ netcenter/
 
 ---
 
+## 📚 Documentação da API
+
+A API agora conta com uma documentação básica em OpenAPI disponível em [docs/openapi.yaml](docs/openapi.yaml).
+
+Também foram incluídos artefatos de organização para desenvolvimento assistido por IA em [AGENTS.md](AGENTS.md) e na pasta [specs](specs).
+
+## 🧪 Testes Automatizados
+
+Execute os testes com:
+
+```bash
+npm test
+```
+
 ## ⚙️ Como Executar o Projeto
 
 Para rodar a aplicação localmente, siga os passos abaixo:
@@ -103,5 +117,23 @@ Para rodar a aplicação localmente, siga os passos abaixo:
    npm start
    ```
 
-4. **Acesse a aplicação:**
+5. **Acesse a aplicação:**
    Abrir `http://localhost:3000` no seu navegador.
+
+---
+
+## 🐳 Uso com Docker
+
+1. Crie o arquivo `.env` a partir de `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Suba o contêiner com Docker Compose:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Acesse a aplicação em `http://localhost:3000`.
+
+> O container expõe a porta `3000` e carrega as variáveis de ambiente do arquivo `.env`.
