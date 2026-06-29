@@ -81,6 +81,54 @@ async function iniciarApp() {
         const destino = `tools.html?ferramenta=ping&alvo=${alvo}`;
         window.location.href = destino;
     });
+
+    // Tratamento de Evento: Relatório Completo
+    const btnFullReport = document.getElementById('btn-full-report');
+    const fullReportStatus = document.getElementById('full-report-status');
+
+    if (btnFullReport) {
+        btnFullReport.addEventListener('click', async () => {
+            const alvo = inputBusca.value.trim();
+            if (!alvo) {
+                fullReportStatus.textContent = 'Por favor, informe um IP ou domínio válido para gerar o relatório.';
+                fullReportStatus.className = 'text-sm font-semibold text-center mb-8 h-4 text-red-400';
+                return;
+            }
+
+            const token = obterToken();
+            if (!token) {
+                fullReportStatus.textContent = 'Redirecionando para login...';
+                fullReportStatus.className = 'text-sm font-semibold text-center mb-8 h-4 text-blue-400';
+                setTimeout(() => redirectToLogin('index.html'), 1000);
+                return;
+            }
+
+            btnFullReport.disabled = true;
+            btnFullReport.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Gerando (pode levar 30s)...`;
+            fullReportStatus.textContent = 'Executando todas as ferramentas de diagnóstico no alvo. Por favor aguarde...';
+            fullReportStatus.className = 'text-sm font-semibold text-center mb-8 h-4 text-blue-400 animate-pulse';
+            lucide.createIcons();
+
+            try {
+                // Importa dinamicamente a função
+                const { gerarRelatorioCompleto } = await import('./api/auth.js');
+                const result = await gerarRelatorioCompleto(alvo);
+                
+                fullReportStatus.innerHTML = `<a href="${result.pdf_url}" target="_blank" class="text-emerald-400 hover:underline">Relatório gerado com sucesso! Clique aqui para abrir.</a>`;
+                fullReportStatus.className = 'text-sm font-semibold text-center mb-8 h-4 text-emerald-400';
+                
+                // Abre diretamente numa nova aba
+                window.open(result.pdf_url, '_blank');
+            } catch (error) {
+                fullReportStatus.textContent = `Erro: ${error.message}`;
+                fullReportStatus.className = 'text-sm font-semibold text-center mb-8 h-4 text-red-400';
+            } finally {
+                btnFullReport.disabled = false;
+                btnFullReport.innerHTML = `<i data-lucide="file-text" class="w-5 h-5"></i> Relatório Completo`;
+                lucide.createIcons();
+            }
+        });
+    }
 }
 
 // Roda o script assim que a página carrega

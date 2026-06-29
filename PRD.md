@@ -1,7 +1,7 @@
 # 📄 Product Requirements Document (PRD) - NetCenter
 
 ## 1. Visão Geral do Produto
-O **NetCenter** é uma aplicação web full-stack que atua como um hub centralizador de ferramentas para diagnóstico de redes. O produto visa facilitar a execução de comandos comuns de infraestrutura (como Ping, Traceroute, Meu IP, NSLookup, DNS Lookup, IP Geolocation, Port Scanner, SSL Checker, WHOIS, HTTP Header Checker, IP Reputation Checker e IP Blacklist Checker) através de uma interface gráfica amigável, moderna e responsiva, substituindo a necessidade imediata do uso de terminais de linha de comando (CLI) para consultas rápidas.
+O **NetCenter** é uma aplicação web full-stack que atua como um hub centralizador de ferramentas para diagnóstico de redes. O produto visa facilitar a execução de comandos comuns de infraestrutura (como Ping, Traceroute, Meu IP, DNS Lookup, IP Geolocation, Port Scanner, SSL Checker, WHOIS, HTTP Header Checker e IP Reputation Checker) através de uma interface gráfica amigável, moderna e responsiva, substituindo a necessidade imediata do uso de terminais de linha de comando (CLI) para consultas rápidas.
 
 ---
 

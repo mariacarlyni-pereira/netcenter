@@ -116,7 +116,6 @@
             'meu-ip': 'Meu IP',
             'ping': 'Teste de Ping',
             'traceroute': 'Traceroute',
-            'nslookup': 'Validação de DNS de domínio',
             'dns-lookup': 'DNS Lookup',
             'ip-geolocation': 'IP Geolocation',
             'port-scanner': 'Port Scanner',
@@ -124,14 +123,12 @@
             'whois': 'WHOIS',
             'http-header-checker': 'HTTP Header Checker',
             'ip-reputation-checker': 'IP Reputation Checker',
-            'ip-blacklist-checker': 'IP Blacklist Checker',
         };
 
         const descriptions = {
             'meu-ip': 'Identifica o IP público do servidor que executa o NetCenter.',
             'ping': 'Verifica latência e conectividade com o destino.',
             'traceroute': 'Rastreia o caminho de rede entre o servidor e o destino.',
-            'nslookup': 'Valida os principais registros DNS do domínio e identifica possíveis inconsistências.',
             'dns-lookup': 'Obtém registros DNS para o domínio informado.',
             'ip-geolocation': 'Busca informações de localização geográfica do IP.',
             'port-scanner': 'Verifica portas TCP comuns no destino.',
@@ -139,14 +136,12 @@
             'whois': 'Consulta dados de registro de domínio ou IP.',
             'http-header-checker': 'Obtém cabeçalhos HTTP/HTTPS do destino.',
             'ip-reputation-checker': 'Avalia reputação e listas negras do IP.',
-            'ip-blacklist-checker': 'Verifica se o IP está em listas de bloqueio.',
         };
 
         const placeholders = {
             'meu-ip': 'Sem alvo necessário',
             'ping': 'ex: google.com ou 8.8.8.8',
             'traceroute': 'ex: cloudflare.com ou 1.1.1.1',
-            'nslookup': 'ex: exemplo.com',
             'dns-lookup': 'ex: exemplo.com',
             'ip-geolocation': 'ex: 8.8.8.8',
             'port-scanner': 'ex: servidor.com ou 1.1.1.1',
@@ -154,7 +149,6 @@
             'whois': 'ex: exemplo.com',
             'http-header-checker': 'ex: exemplo.com',
             'ip-reputation-checker': 'ex: 8.8.8.8',
-            'ip-blacklist-checker': 'ex: 8.8.8.8',
         };
 
         const toolName = ferramentaLabels[ferramenta] || ferramenta;
@@ -194,11 +188,210 @@
             }
         });
 
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return String(text);
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function formatarSaidaTerminal(ferramenta, result) {
+            const lines = [];
+
+            if (result.command) {
+                lines.push(`<span class="text-slate-500">> Executando:</span> <span class="text-blue-400 font-bold">${escapeHtml(result.command)}</span>`);
+            }
+            if (result.exitCode !== undefined && result.exitCode !== 0) {
+                lines.push(`<span class="text-red-400 font-semibold">[!] Erro: Código de saída ${result.exitCode}</span>`);
+            }
+
+            // Se houver stdout de comando padrão (como ping, traceroute, whois), exibe linha a linha
+            if (result.stdout && (ferramenta === 'ping' || ferramenta === 'traceroute' || ferramenta === 'whois' || ferramenta === 'meu-ip')) {
+                lines.push('<span class="text-slate-500">--- Saída ---</span>');
+                const stdoutLines = result.stdout.split('\n');
+                stdoutLines.forEach(l => {
+                    lines.push(`<span class="text-slate-300">${escapeHtml(l)}</span>`);
+                });
+            }
+
+            if (result.stderr) {
+                lines.push('<span class="text-red-400 font-semibold">--- Erro (stderr) ---</span>');
+                const stderrLines = result.stderr.split('\n');
+                stderrLines.forEach(l => {
+                    lines.push(`<span class="text-red-400">${escapeHtml(l)}</span>`);
+                });
+            }
+
+            // Tratamento especial de detalhes estruturados
+            if (result.details) {
+                const details = result.details;
+
+                switch (ferramenta) {
+                    case 'meu-ip': {
+                        if (details.publicIp) {
+                            lines.push(`<span class="text-emerald-400 font-bold">[+] IP Público Detectado:</span> <span class="text-white font-bold bg-slate-800 px-2 py-0.5 rounded">${escapeHtml(details.publicIp)}</span>`);
+                        }
+                        break;
+                    }
+                    case 'dns-lookup': {
+                        lines.push('<span class="text-white font-bold">=== Registros DNS (DNS Lookup) ===</span>');
+                        if (Array.isArray(details) && details.length > 0) {
+                            lines.push(`<span class="text-slate-500">${'Tipo'.padEnd(10)}${'Registros'.padEnd(40)}</span>`);
+                            lines.push(`<span class="text-slate-600">${'-'.repeat(50)}</span>`);
+                            details.forEach(item => {
+                                const typeStr = `<span class="text-blue-400 font-bold">${item.type.padEnd(10)}</span>`;
+                                const recordsStr = Array.isArray(item.records) 
+                                    ? item.records.map(r => typeof r === 'object' ? JSON.stringify(r) : r).join(', ')
+                                    : item.records;
+                                lines.push(`${typeStr}<span class="text-slate-300">${escapeHtml(recordsStr)}</span>`);
+                            });
+                        } else {
+                            lines.push('<span class="text-yellow-400">Nenhum registro DNS encontrado para o domínio informado.</span>');
+                        }
+                        break;
+                    }
+                    case 'ip-geolocation': {
+                        lines.push('<span class="text-white font-bold">=== Informações de Geolocalização (IP Geolocation) ===</span>');
+                        if (details.status === 'success') {
+                            const addRow = (label, value) => {
+                                lines.push(`<span class="text-slate-500">${label.padEnd(24)}</span><span class="text-slate-200">${escapeHtml(value || 'N/A')}</span>`);
+                            };
+                            addRow('IP de Consulta:', details.query);
+                            addRow('País:', `${details.country || ''}`);
+                            addRow('Estado/Cidade:', `${details.regionName || ''} / ${details.city || ''}`);
+                            addRow('CEP:', details.zip);
+                            addRow('Coordenadas (Lat/Lon):', `${details.lat}, ${details.lon}`);
+                            addRow('Provedor (ISP):', details.isp);
+                            addRow('Organização:', details.org);
+                            addRow('AS:', details.as);
+                        } else {
+                            lines.push(`<span class="text-red-400">Falha ao obter geolocalização: ${escapeHtml(details.message || 'Erro desconhecido')}</span>`);
+                        }
+                        break;
+                    }
+                    case 'port-scanner': {
+                        lines.push('<span class="text-white font-bold">=== Resultado do Escaneamento de Portas (Port Scanner) ===</span>');
+                        if (Array.isArray(details) && details.length > 0) {
+                            lines.push(`<span class="text-slate-500">${'Porta'.padEnd(10)}${'Serviço'.padEnd(18)}${'Status'.padEnd(12)}</span>`);
+                            lines.push(`<span class="text-slate-600">${'-'.repeat(40)}</span>`);
+
+                            const portMap = {
+                                22: 'SSH',
+                                80: 'HTTP',
+                                443: 'HTTPS',
+                                53: 'DNS',
+                                8080: 'HTTP-Alt'
+                            };
+
+                            details.forEach(item => {
+                                const service = portMap[item.port] || 'Desconhecido';
+                                const statusColor = item.status === 'open' 
+                                    ? '<span class="text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800">[ ABERTA ]</span>'
+                                    : '<span class="text-red-400 bg-red-950/50 px-2 py-0.5 rounded border border-red-900">[ FECHADA ]</span>';
+
+                                lines.push(`<span class="text-blue-400 font-mono">${item.port.toString().padEnd(10)}</span>` +
+                                           `<span class="text-slate-300">${service.padEnd(18)}</span>` +
+                                           `${statusColor}`);
+                            });
+                        } else {
+                            lines.push('<span class="text-yellow-400">Nenhum resultado retornado pelo escaneamento.</span>');
+                        }
+                        break;
+                    }
+                    case 'ssl-checker': {
+                        lines.push('<span class="text-white font-bold">=== Validação de Certificado SSL/TLS (SSL Checker) ===</span>');
+                        const isAuthorized = details.authorized || details.authorized === undefined;
+                        const statusBadge = isAuthorized
+                            ? '<span class="text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800">[ VÁLIDO / CONFIÁVEL ]</span>'
+                            : `<span class="text-red-400 font-bold bg-red-950/50 px-2 py-0.5 rounded border border-red-900">[ INVÁLIDO: ${escapeHtml(details.authorizationError || 'Não confiável')} ]</span>`;
+
+                        lines.push(`<span class="text-slate-500">${'Status:'.padEnd(18)}</span>${statusBadge}`);
+
+                        if (details.subject) {
+                            lines.push(`<span class="text-slate-500">${'Domínio (CN):'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.subject.CN || 'N/A')}</span>`);
+                            lines.push(`<span class="text-slate-500">${'Organização (O):'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.subject.O || 'N/A')}</span>`);
+                        }
+                        if (details.issuer) {
+                            lines.push(`<span class="text-slate-500">${'Emissor (O):'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.issuer.O || 'N/A')} (${escapeHtml(details.issuer.CN || 'N/A')})</span>`);
+                        }
+                        lines.push(`<span class="text-slate-500">${'Validez De:'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.valid_from || 'N/A')}</span>`);
+                        lines.push(`<span class="text-slate-500">${'Validez Até:'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.valid_to || 'N/A')}</span>`);
+                        lines.push(`<span class="text-slate-500">${'Fingerprint:'.padEnd(18)}</span><span class="text-slate-400 text-xs font-mono break-all">${escapeHtml(details.fingerprint || 'N/A')}</span>`);
+
+                        if (details.subjectaltname) {
+                            lines.push(`<span class="text-slate-500">${'Alt Names:'.padEnd(18)}</span><span class="text-slate-300 text-xs">${escapeHtml(details.subjectaltname)}</span>`);
+                        }
+                        break;
+                    }
+                    case 'http-header-checker': {
+                        lines.push('<span class="text-white font-bold">=== Análise de Cabeçalhos HTTP (HTTP Header Checker) ===</span>');
+                        lines.push(`<span class="text-slate-500">${'URL Acessada:'.padEnd(18)}</span><span class="text-blue-400 underline">${escapeHtml(details.url)}</span>`);
+
+                        const statusColor = details.status >= 200 && details.status < 400 ? 'text-emerald-400' : 'text-red-400';
+                        lines.push(`<span class="text-slate-500">${'Código Status:'.padEnd(18)}</span><span class="${statusColor} font-bold">${details.status}</span>`);
+
+                        lines.push('');
+                        lines.push('<span class="text-slate-300 font-bold">Cabeçalhos Retornados:</span>');
+                        lines.push(`<span class="text-slate-600">${'-'.repeat(60)}</span>`);
+
+                        if (details.headers) {
+                            Object.keys(details.headers).forEach(key => {
+                                lines.push(`<span class="text-blue-400 font-semibold">${escapeHtml(key)}:</span> <span class="text-slate-200">${escapeHtml(details.headers[key])}</span>`);
+                            });
+                        }
+                        break;
+                    }
+                    case 'ip-reputation-checker': {
+                        lines.push('<span class="text-white font-bold">=== Verificação de Reputação de IP (IP Reputation Checker) ===</span>');
+                        lines.push(`<span class="text-slate-500">${'Endereço IP:'.padEnd(18)}</span><span class="text-slate-200">${escapeHtml(details.ip)}</span>`);
+
+                        const isSafe = details.listedCount === 0;
+                        const reputationBadge = isSafe
+                            ? '<span class="text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800">[ LIMPO / REPUTAÇÃO BOA ]</span>'
+                            : `<span class="text-red-400 font-bold bg-red-950/50 px-2 py-0.5 rounded border border-red-900">[ RISCO DETECTADO: ${details.listedCount} LISTAS ]</span>`;
+
+                        lines.push(`<span class="text-slate-500">${'Reputação:'.padEnd(18)}</span>${reputationBadge}`);
+                        lines.push('');
+                        lines.push('<span class="text-slate-300 font-bold">Varredura de Listas Negras (DNSBL):</span>');
+                        lines.push(`<span class="text-slate-600">${'-'.repeat(50)}</span>`);
+
+                        if (Array.isArray(details.blacklist)) {
+                            details.blacklist.forEach(item => {
+                                const listNameStr = `<span class="text-blue-400 font-semibold">${item.dnsbl.padEnd(30)}</span>`;
+                                const listedBadge = item.listed
+                                    ? '<span class="text-red-400 font-bold bg-red-950/50 px-2 py-0.5 rounded border border-red-900">LISTADO</span>'
+                                    : '<span class="text-emerald-400 font-semibold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-900">LIMPO</span>';
+
+                                if (item.error) {
+                                    lines.push(`${listNameStr}${listedBadge} <span class="text-slate-500 text-xs">(${escapeHtml(item.error)})</span>`);
+                                } else {
+                                    lines.push(`${listNameStr}${listedBadge}`);
+                                }
+                            });
+                        }
+                        break;
+                    }
+                    default: {
+                        lines.push('<span class="text-slate-500">--- Detalhes ---</span>');
+                        lines.push(`<pre class="text-slate-300 font-mono text-xs whitespace-pre-wrap">${escapeHtml(JSON.stringify(details, null, 2))}</pre>`);
+                    }
+                }
+            } else if (!result.stdout && !result.stderr) {
+                lines.push('<span class="text-yellow-400">Nenhum resultado ou detalhe foi retornado pela ferramenta.</span>');
+            }
+
+            return lines;
+        }
+
         function appendOutput(lines) {
             outputLines.innerHTML = '';
             lines.forEach((line) => {
                 const p = document.createElement('p');
-                p.textContent = line;
+                p.className = 'whitespace-pre-wrap';
+                p.innerHTML = line;
                 outputLines.appendChild(p);
             });
         }
@@ -220,33 +413,14 @@
 
             try {
                 const result = await executarFerramenta(ferramenta, targetValue);
-                const lines = [];
-
-                if (result.command) {
-                    lines.push(`Comando: ${result.command}`);
-                }
-                if (result.exitCode !== undefined) {
-                    lines.push(`Código de saída: ${result.exitCode}`);
-                }
-                if (result.stdout) {
-                    lines.push('--- Saída ---');
-                    lines.push(...result.stdout.split('\n'));
-                }
-                if (result.stderr) {
-                    lines.push('--- Erro ---');
-                    lines.push(...result.stderr.split('\n'));
-                }
-                if (result.details) {
-                    lines.push('--- Detalhes ---');
-                    lines.push(JSON.stringify(result.details, null, 2));
-                }
+                const lines = formatarSaidaTerminal(ferramenta, result);
 
                 appendOutput(lines.length ? lines : ['Nenhum resultado retornado.']);
                 summaryStatus.textContent = 'concluído';
                 reportStatus.textContent = 'Execução concluída com sucesso.';
             } catch (error) {
                 const msg = error.message || 'Falha ao executar a ferramenta.';
-                appendOutput([`Erro: ${msg}`]);
+                appendOutput([`<span class="text-red-400 font-bold">Erro: ${escapeHtml(msg)}</span>`]);
                 summaryStatus.textContent = 'erro';
                 reportStatus.textContent = msg;
             } finally {

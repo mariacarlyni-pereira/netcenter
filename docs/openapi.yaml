@@ -179,7 +179,7 @@ components:
       properties:
         ferramenta:
           type: string
-          enum: [meu-ip, ping, traceroute, nslookup, dns-lookup, ip-geolocation, port-scanner, ssl-checker, whois, http-header-checker]
+          enum: [meu-ip, ping, traceroute, dns-lookup, ip-geolocation, port-scanner, ssl-checker, whois, http-header-checker, ip-reputation-checker]
           example: ping
         alvo:
           type: string

@@ -94,6 +94,23 @@ export async function gerarRelatorio(ferramenta, alvo) {
   return handleResponse(response);
 }
 
+export async function gerarRelatorioCompleto(alvo) {
+  const token = obterToken();
+  if (!token) {
+    throw new Error('Token ausente. Faça login para continuar.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/reports/generate-full`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ alvo }),
+  });
+  return handleResponse(response);
+}
+
 export async function listarRelatorios() {
   const token = obterToken();
   if (!token) {

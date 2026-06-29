@@ -282,6 +282,82 @@ export const runToolValidation = [
   body('alvo').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1 }).withMessage('O alvo deve ser uma string válida.'),
 ];
 
+/**
+ * Executa uma ferramenta de rede de forma programática (sem depender de req/res).
+ * Retorna o objeto de resultado da execução.
+ */
+export async function executeToolInternal(ferramenta, alvo) {
+  const target = ferramenta === 'meu-ip' ? null : sanitizeTarget(alvo);
+  if (ferramenta !== 'meu-ip' && !target) {
+    throw new Error('Alvo inválido. Informe um IP ou domínio válido.');
+  }
+
+  let result = { ferramenta, target: target || 'meu-ip' };
+
+  switch (ferramenta) {
+    case 'meu-ip': {
+      const publicIp = await getPublicIp();
+      result.command = 'curl https://api.ipify.org?format=json';
+      result.stdout = publicIp
+        ? `IP público do servidor: ${publicIp}`
+        : 'Não foi possível obter o IP público do servidor.';
+      result.details = { publicIp };
+      break;
+    }
+    case 'ping': {
+      const args = isWindows ? ['-n', '4', target] : ['-c', '4', target];
+      result = { ...result, ...(await runCommand('ping', args)) };
+      break;
+    }
+    case 'traceroute': {
+      const args = isWindows ? ['-d', '-h', '20', '-w', '1000', target] : ['-m', '20', '-w', '1', target];
+      result = { ...result, ...(await runCommand(isWindows ? 'tracert' : 'traceroute', args, 45000)) };
+      break;
+    }
+
+    case 'dns-lookup': {
+      result.command = `dns resolve ${target}`;
+      result.details = await resolveDnsRecords(target);
+      break;
+    }
+    case 'ip-geolocation': {
+      result.command = `geo lookup ${target}`;
+      result.details = await lookupGeolocation(target);
+      break;
+    }
+    case 'port-scanner': {
+      result.command = `port scan ${target}`;
+      result.details = await scanPorts(target);
+      break;
+    }
+    case 'ssl-checker': {
+      result.command = `ssl check ${target}`;
+      result.details = await checkSsl(target);
+      break;
+    }
+    case 'whois': {
+      result.command = `whois ${target}`;
+      result.stdout = await whoisLookup(target);
+      break;
+    }
+    case 'http-header-checker': {
+      result.command = `http headers ${target}`;
+      result.details = await fetchHttpHeaders(target);
+      break;
+    }
+    case 'ip-reputation-checker': {
+      result.command = `ip reputation ${target}`;
+      result.details = await checkIpReputation(target);
+      break;
+    }
+
+    default:
+      throw new Error('Ferramenta desconhecida.');
+  }
+
+  return result;
+}
+
 export async function runTool(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -303,87 +379,7 @@ export async function runTool(req, res, next) {
   }
 
   try {
-    let result = { ferramenta, target: target || 'meu-ip' };
-
-    switch (ferramenta) {
-      case 'meu-ip': {
-        const publicIp = await getPublicIp();
-        result.command = 'curl https://api.ipify.org?format=json';
-        result.stdout = publicIp
-          ? `IP público do servidor: ${publicIp}`
-          : 'Não foi possível obter o IP público do servidor.';
-        result.details = { publicIp };
-        break;
-      }
-      case 'ping': {
-        const args = isWindows ? ['-n', '4', target] : ['-c', '4', target];
-        result = { ...result, ...(await runCommand('ping', args)) };
-        break;
-      }
-      case 'traceroute': {
-        // Reduz o número máximo de saltos para 20 e o tempo de espera por resposta
-        const args = isWindows ? ['-d', '-h', '20', '-w', '1000', target] : ['-m', '20', '-w', '1', target];
-        // Timeout global de 45 segundos para dar tempo ao traceroute terminar
-        result = { ...result, ...(await runCommand(isWindows ? 'tracert' : 'traceroute', args, 45000)) };
-        break;
-      }
-      case 'nslookup': {
-        result.command = `dns validate ${target}`;
-        const records = await resolveDnsRecords(target);
-        const requiredTypes = ['A', 'NS'];
-        const missing = requiredTypes.filter((type) => !records.some((record) => record.type === type));
-        result.details = {
-          records,
-          warnings: missing.length
-            ? `Registros essenciais ausentes: ${missing.join(', ')}`
-            : 'Registros essenciais presentes.',
-        };
-        break;
-      }
-      case 'dns-lookup': {
-        result.command = `dns resolve ${target}`;
-        result.details = await resolveDnsRecords(target);
-        break;
-      }
-      case 'ip-geolocation': {
-        result.command = `geo lookup ${target}`;
-        result.details = await lookupGeolocation(target);
-        break;
-      }
-      case 'port-scanner': {
-        result.command = `port scan ${target}`;
-        result.details = await scanPorts(target);
-        break;
-      }
-      case 'ssl-checker': {
-        result.command = `ssl check ${target}`;
-        result.details = await checkSsl(target);
-        break;
-      }
-      case 'whois': {
-        result.command = `whois ${target}`;
-        result.stdout = await whoisLookup(target);
-        break;
-      }
-      case 'http-header-checker': {
-        result.command = `http headers ${target}`;
-        result.details = await fetchHttpHeaders(target);
-        break;
-      }
-      case 'ip-reputation-checker': {
-        result.command = `ip reputation ${target}`;
-        result.details = await checkIpReputation(target);
-        break;
-      }
-      case 'ip-blacklist-checker': {
-        result.command = `ip blacklist ${target}`;
-        result.details = await checkBlacklist(target);
-        break;
-      }
-      default:
-        return res.status(400).json({ message: 'Ferramenta desconhecida.' });
-    }
-
+    const result = await executeToolInternal(ferramenta, alvo);
     res.json(result);
   } catch (error) {
     console.error('Erro ao executar ferramenta:', error);

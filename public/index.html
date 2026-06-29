@@ -34,10 +34,17 @@
                     <input type="text" id="input-alvo" placeholder="Digite um IP ou Domínio (ex: google.com)" 
                            class="w-full bg-transparent py-4 px-3 outline-none text-white font-mono">
                 </div>
-                <button id="btn-busca" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition flex items-center justify-center gap-2">
-                    Analisar <i data-lucide="arrow-right" class="w-5 h-5"></i>
-                </button>
+                <div class="flex gap-2">
+                    <button id="btn-busca" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition flex items-center justify-center gap-2">
+                        Analisar <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                    <button id="btn-full-report" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition flex items-center justify-center gap-2" title="Gerar relatório de análise completa em PDF">
+                        <i data-lucide="file-text" class="w-5 h-5"></i> Relatório Completo
+                    </button>
+                </div>
             </div>
+            
+            <p id="full-report-status" class="text-sm font-semibold text-center mb-8 h-4"></p>
 
             <div id="ferramentas" class="w-full">
                 <p class="text-xs font-bold text-slate-600 uppercase tracking-[0.2em] mb-8">Ferramentas Disponíveis</p>

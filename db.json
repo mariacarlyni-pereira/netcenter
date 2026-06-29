@@ -18,12 +18,7 @@
       "descricao": "Mapeia o caminho e os saltos de rede até o destino.",
       "icone": "route"
     },
-    {
-      "id": "nslookup",
-      "nome": "NSLookup",
-      "descricao": "Consulte registros de servidores DNS para domínios.",
-      "icone": "database"
-    },
+
     {
       "id": "dns-lookup",
       "nome": "DNS Lookup",
@@ -65,13 +60,6 @@
       "nome": "IP Reputation Checker",
       "descricao": "Avalia a reputação de um endereço IP com base em listas de bloqueio e relatórios de segurança.",
       "icone": "shield-x"
-    },
- 
-    {
-      "id": "ip-blacklist-checker",
-      "nome": "IP Blacklist Checker",
-      "descricao": "Verifica se um endereço IP está listado em bancos de dados de bloqueio de spam ou segurança.",
-      "icone": "shield-off"
     }
 
   ],
