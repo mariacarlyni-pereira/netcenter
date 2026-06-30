@@ -3,6 +3,7 @@ FROM node:20-slim
 WORKDIR /app
 
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y iputils-ping dnsutils traceroute whois
 
 # Copia package files first para cache de camadas do Docker
 COPY package.json package-lock.json ./
