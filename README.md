@@ -2,9 +2,9 @@
 
 **NetCenter** é uma aplicação web desenvolvida como projeto acadêmico para atuar como um hub centralizador de ferramentas de diagnóstico de redes. O objetivo principal do projeto é aplicar conceitos modernos de desenvolvimento full-stack, incluindo estruturação de APIs robustas em Express, persistência relacional com Prisma ORM e SQLite, autenticação JWT segura, e manipulação dinâmica de DOM no front-end.
 
-URL da aplicação: https://netcenter-production.up.railway.app
+URL da aplicação: https://netcenter-production.up.railway.app / https://web--netcenter-app--zhtl5zmtcm74.code.run/
 
-URL da API: https://netcenter-production.up.railway.app/docs
+URL da API: https://netcenter-production.up.railway.app/docs / https://web--netcenter-app--zhtl5zmtcm74.code.run/docs
 
 ---
 
